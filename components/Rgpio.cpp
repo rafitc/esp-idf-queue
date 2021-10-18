@@ -56,7 +56,7 @@ bool Rgpio::get_gpio_status(gpio_num_t pin)
 {
     bool state;
     state = gpio_get_level(pin);
-    ESP_LOGI(TAG, "Status of GPIO %d is %d", pin, state);
+    //ESP_LOGI(TAG, "Status of GPIO %d is %d", pin, state);
     return state;
 }
 
@@ -67,7 +67,7 @@ static void main_power_isr_handler(void* arg)
     msg.hdr = E_MAIN_MSG_MAIN_POWER_STATUS;
     msg.bool_payload = gpio_get_level(GPIO_MAIN_POWER);
     //ets_printf("Hey interrupt me | ");
-    //xQueueSendFromISR(main_q, &msg, NULL);
+    xQueueSendFromISR(main_q, &msg, NULL);
     //Here is the pronlem. !!!!
 }
 
