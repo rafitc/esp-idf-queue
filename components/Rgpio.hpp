@@ -23,6 +23,7 @@ namespace helloWorld
 typedef enum {
 	E_MAIN_MSG_NONE = 0,
 	E_MAIN_MSG_MAIN_POWER_STATUS,
+    
 } e_main_msg_t;
 
 typedef struct {
@@ -41,6 +42,7 @@ public:
     void set_gpio(gpio_num_t pin);
     void reset_gpio(gpio_num_t pin);
     bool get_gpio_status(gpio_num_t pin);
+    bool check_queue();
     void gpio_evt_handler(void* arg);
 };
 

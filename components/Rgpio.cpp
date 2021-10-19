@@ -9,10 +9,14 @@ namespace helloWorld
 {
 static void main_power_isr_handler(void* arg);
 
+static xQueueHandle local_q = NULL;
+static main_q_payload_t msg;
 void Rgpio::gpio_init(xQueueHandle* main_q)
 {
+    
     gpio_config_t io_conf;
-
+    local_q = xQueueCreate(20, sizeof(main_q_payload_t));
+    
     io_conf.intr_type = GPIO_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pin_bit_mask = BIT(GPIO_LED);
@@ -21,7 +25,7 @@ void Rgpio::gpio_init(xQueueHandle* main_q)
     gpio_config(&io_conf);
     set_gpio(GPIO_LED);
 
-    io_conf.intr_type = GPIO_INTR_ANYEDGE;
+    io_conf.intr_type = GPIO_INTR_NEGEDGE;
     io_conf.pin_bit_mask = BIT(GPIO_MAIN_POWER);
     io_conf.mode = GPIO_MODE_INPUT;
     io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
@@ -32,9 +36,9 @@ void Rgpio::gpio_init(xQueueHandle* main_q)
     // io_conf.mode = GPIO_MODE_INPUT;
     // io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
     // gpio_config(&io_conf);
-
+    
     gpio_install_isr_service(0);
-    gpio_isr_handler_add(GPIO_MAIN_POWER, main_power_isr_handler, main_q);
+    gpio_isr_handler_add(GPIO_MAIN_POWER, main_power_isr_handler,local_q);
     // gpio_isr_handler_add(GPIO_BACKUP_POWER, gpio_isr_handler, main_q);
 
     ESP_LOGI(TAG, "GPIO initialised.");
@@ -60,15 +64,60 @@ bool Rgpio::get_gpio_status(gpio_num_t pin)
     return state;
 }
 
-static void main_power_isr_handler(void* arg)
-{
-    xQueueHandle* main_q = (xQueueHandle*)arg;
-    static main_q_payload_t msg;
-    msg.hdr = E_MAIN_MSG_MAIN_POWER_STATUS;
-    msg.bool_payload = gpio_get_level(GPIO_MAIN_POWER);
-    //ets_printf("Hey interrupt me | ");
-    xQueueSendFromISR(main_q, &msg, NULL);
-    //Here is the pronlem. !!!!
+bool Rgpio::check_queue(){
+    uint32_t *payload = msg.main_payload;
+	bool bool_payload = msg.bool_payload;
+
+    if (xQueueReceive(local_q, &msg, 200)) {
+        ESP_LOGI(TAG, "Hyyya!!! Here is the queue");
+
+        switch(msg.hdr) {
+		    case E_MAIN_MSG_MAIN_POWER_STATUS:
+			    ESP_LOGI(TAG, "Received gpio event");
+			    break;
+            default:
+                ESP_LOGI(TAG, "Running default case");
+                break;
+        }
+        return true;
+    }
+    else{
+        ESP_LOGI(TAG, "Queue is not working");
+        return false;
+    }
+    
 }
+
+static void main_power_isr_handler(void *arg)
+{
+    gpio_isr_handler_remove(GPIO_MAIN_POWER);
+    
+    //uint32_t* gpio_num = (uint32_t*) GPIO_MAIN_POWER;
+   // xQueueHandle* local_q = (xQueueHandle*)arg;
+    
+    msg.hdr = E_MAIN_MSG_MAIN_POWER_STATUS;
+    msg.bool_payload = true;//gpio_get_level(GPIO_MAIN_POWER);
+    ets_printf("Hey interrupt me | ");
+    try{
+        ets_printf("Trying.");
+        esp_err_t err;
+        err = xQueueSendFromISR(local_q, &msg, NULL);
+        if(err == pdTRUE){
+            ets_printf("Done ");
+        }
+        else{
+            ets_printf("Throwing Exception\n ");
+            throw err;
+        }
+    }
+    catch (...){
+        ets_printf("GOT ERROR");
+    }
+    
+    //Here is the pronlem. !!!!
+
+    gpio_isr_handler_add(GPIO_MAIN_POWER, main_power_isr_handler, local_q);
+}
+
 
 }; // namespace

@@ -74,11 +74,17 @@ static void main_q_handler(void *arg)
 	while (true)
 	{
 		ESP_LOGI (TAG, "Hi I'm here");
+		if(rdf_ctx->rdf_gpio->check_queue()){
+			printf("\n-=- GOT IT\n");
+		}
+		else{
+			printf("\n-=- NOttttttt ---GOT IT\n");
+		}
 		main_q_payload_t msg;
 		if (xQueueReceive(rdf_ctx->main_q, &msg, 200) != pdTRUE) {
 			ESP_LOGE(TAG, "Error in receiving from queue!!");
 		} else {
-			ESP_LOGI(TAG, "Process main q");
+			ESP_LOGI(TAG, "GOT data !!!!. Process main q");
 			process_main_q(rdf_ctx, msg);
 		}
 		// RDF_DBG_I(TAG, "GPIO_MAIN_POWER: %d"); //gpio_get_level(GPIO_MAIN_POWER));
